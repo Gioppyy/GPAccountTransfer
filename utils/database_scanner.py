@@ -39,6 +39,74 @@ class MySQLScanner:
             conn.close()
         return results
 
+    def update_entries(
+        self,
+        entries: list["MySQLEntry"],
+        old_uuid: str,
+        new_uuid: str,
+        old_name: str,
+        new_name: str,
+        dry_run: bool = False
+    ) -> int:
+        total_updated = 0
+        conn = mysql.connector.connect(**self._config)
+
+        try:
+            cur = conn.cursor()
+            for entry in tqdm(entries, desc="Updating MySQL entries"):
+                conn.database = entry.database
+
+                total_updated += self._update_value(
+                    cur,
+                    entry.table,
+                    entry.column,
+                    old_uuid,
+                    new_uuid,
+                    dry_run
+                )
+
+                total_updated += self._update_value(
+                    cur,
+                    entry.table,
+                    entry.column,
+                    old_name,
+                    new_name,
+                    dry_run
+                )
+
+            if not dry_run:
+                conn.commit()
+        finally:
+            cur.close()
+            conn.close()
+
+        return total_updated
+
+    def _update_value(
+        self,
+        cur,
+        table: str,
+        column: str,
+        old_value: str,
+        new_value: str,
+        dry_run: bool
+    ) -> int:
+        query = f"""
+            UPDATE `{table}`
+            SET `{column}` = %s
+            WHERE `{column}` = %s
+        """
+
+        if dry_run:
+            cur.execute(
+                f"SELECT COUNT(*) FROM `{table}` WHERE `{column}` = %s",
+                (old_value,)
+            )
+            return cur.fetchone()[0]
+
+        cur.execute(query, (new_value, old_value))
+        return cur.rowcount
+
     def _get_databases(self, conn: MySQLConnection) -> list[str]:
         cur = conn.cursor()
         try:
