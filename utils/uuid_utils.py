@@ -29,3 +29,4 @@ class UUIDUtils:
 
         except Exception as exp:
             self._logger.error(str(exp))
+            return None

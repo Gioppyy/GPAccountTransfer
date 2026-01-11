@@ -16,6 +16,7 @@ def main():
         old_username = input_utils.get_arg("old-name", "user1")
         new_username = input_utils.get_arg("new-name", "user2")
         bedrock = input_utils.parse_bool(input_utils.get_arg("bedrock", "false"))
+        dry_run = input_utils.parse_bool(input_utils.get_arg("dry-run", "true"))
     except Exception as e:
         logger.error(str(e))
 
@@ -27,19 +28,23 @@ def main():
     logger.info(f"new username: {new_username}")
     input_utils.check_ans(logger, input("Correct (y/n)? "))
 
+    if (old_username == new_username):
+        logger.critical("Please insert different usernames")
+
     if bedrock:
+        old_username = cfg["bedrock_format"].replace("{username}", old_username)
         new_username = cfg["bedrock_format"].replace("{username}", new_username)
-        logger.info(f"formatted username for bedrock user: {new_username}")
+        logger.info(f"formatted old username for bedrock user: {old_username}")
+        logger.info(f"formatted new username for bedrock user: {new_username}")
+
     logger.info("Getting and generating uuid")
     uuid_utils = UUIDUtils(logger)
     old_uuid = uuid_utils.generate_offline_uuid(old_username)
     new_uuid = uuid_utils.generate_offline_uuid(new_username)
-    if (old_username == new_username):
-        logger.critical("Please insert different usernames")
     logger.info("Generated successfully")
 
     logs = []
-    fscanner = FolderScanner(logger, cfg["server_path"], old_uuid, old_username, new_uuid, new_username)
+    fscanner = FolderScanner(logger, cfg["server_path"], old_uuid, old_username, new_uuid, new_username, dry_run)
     logs.extend(fscanner.scan())
 
     if cfg["storage_type"] != "none":
@@ -53,7 +58,7 @@ def main():
                 new_uuid=new_uuid,
                 old_name=old_username,
                 new_name=new_username,
-                dry_run=True
+                dry_run=dry_run
             )
             logs.extend(mysql_logs)
         except Exception as e:

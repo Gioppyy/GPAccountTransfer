@@ -20,8 +20,13 @@ class SQLITEScanner():
                     count_name = self._update_column(conn, table, column, old_name, new_name, dry_run)
                     if count_uuid > 0 or count_name > 0:
                         results.append(SqliteEntry(file_path, table, column))
-            if not dry_run:
-                conn.commit()
+            try:
+                if not dry_run:
+                    conn.commit()
+            except Exception:
+                if not dry_run:
+                    conn.rollback()
+                raise
         return results
 
     def _update_column(self, conn: sqlite3.Connection, table: str, column: str, old_value: str, new_value: str, dry_run: bool) -> int:

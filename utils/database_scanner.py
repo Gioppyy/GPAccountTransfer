@@ -5,7 +5,7 @@ from tqdm import tqdm
 try:
     import mysql.connector
     from mysql.connector import MySQLConnection
-except:
+except ImportError:
     logger.warn("Mysql not avaible, install it with pip install mysql")
 
 KEYWORDS = ("uuid", "player", "user", "name", "nick", "owner")
@@ -74,8 +74,13 @@ class MySQLScanner:
                     dry_run
                 )
 
-            if not dry_run:
-                conn.commit()
+            try:
+                if not dry_run:
+                    conn.commit()
+            except Exception:
+                if not dry_run:
+                    conn.rollback()
+                raise
         finally:
             cur.close()
             conn.close()
