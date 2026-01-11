@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from .backup import SqliteEntry
 from utils import logger
 import sqlite3
 
@@ -8,7 +8,7 @@ class SQLITEScanner():
     def __init__(self, logger: logger):
         self._logger = logger
 
-    def scan(self, file_path: str, old_uuid: str, old_name: str) -> list[object]:
+    def scan(self, file_path: str, old_uuid: str, old_name: str) -> list["SqliteEntry"]:
         with sqlite3.connect(f"file:{file_path}?mode=ro", uri=True) as conn:
             tables = self._get_tables(conn)
             results = []
@@ -18,7 +18,7 @@ class SQLITEScanner():
 
                 for column in interesting:
                     if self._search_column(conn, table, column, old_uuid, old_name) > 0:
-                        results.append(DBEntry(file_path, table, column))
+                        results.append(SqliteEntry(file_path, table, column))
             return results
 
     def _get_tables(self, conn: sqlite3.Connection) -> list[str]:
@@ -34,7 +34,7 @@ class SQLITEScanner():
                 cur.close()
         return []
 
-    def _get_columns(self, conn: sqlite3.Connection, table_name: str) -> list[object]:
+    def _get_columns(self, conn: sqlite3.Connection, table_name: str) -> list[str]:
         with conn:
             cur = conn.cursor()
             try:
@@ -73,9 +73,3 @@ class SQLITEScanner():
 
     def _quote_ident(self, name: str) -> str:
         return '"' + name.replace('"', '""') + '"'
-
-@dataclass
-class DBEntry:
-    path: str
-    table: str
-    column: str

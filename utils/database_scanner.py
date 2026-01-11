@@ -1,5 +1,6 @@
-from dataclasses import dataclass
+from .backup import MySQLEntry
 from utils import logger
+from tqdm import tqdm
 
 try:
     import mysql.connector
@@ -25,12 +26,12 @@ class MySQLScanner:
             "password": password,
         }
 
-    def scan_all_databases(self, old_uuid: str, old_name: str) -> list["DBEntry"]:
+    def scan_all_databases(self, old_uuid: str, old_name: str) -> list["MySQLEntry"]:
         results = []
         conn = mysql.connector.connect(**self._config)
         try:
             databases = self._get_databases(conn)
-            for db in databases:
+            for db in tqdm(databases, desc="Scanning databases"):
                 if db in SYSTEM_DATABASES:
                     continue
                 results.extend(self._scan_database(conn, db, old_uuid, old_name))
@@ -46,16 +47,16 @@ class MySQLScanner:
         finally:
             cur.close()
 
-    def _scan_database(self, conn: MySQLConnection, database: str, old_uuid: str, old_name: str) -> list["DBEntry"]:
+    def _scan_database(self, conn: MySQLConnection, database: str, old_uuid: str, old_name: str) -> list["MySQLEntry"]:
         results = []
         conn.database = database
         tables = self._get_tables(conn)
-        for table in tables:
+        for table in tqdm(tables, desc=f"Scanning tables in {database}", leave=False):
             columns = self._get_columns(conn, table)
             interesting = self._analyze_columns(columns)
             for column in interesting:
                 if self._search_column(conn, table, column, old_uuid, old_name) > 0:
-                    results.append(DBEntry(database, table, column))
+                    results.append(MySQLEntry(database, table, column))
         return results
 
     def _get_tables(self, conn: MySQLConnection) -> list[str]:
@@ -89,9 +90,3 @@ class MySQLScanner:
             return cur.fetchone()[0]
         finally:
             cur.close()
-
-@dataclass
-class DBEntry:
-    database: str
-    table: str
-    column: str

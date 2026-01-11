@@ -19,7 +19,7 @@ class Config:
 
         self._settings["server_path"] = os.getenv("SERVER_PATH")
         self._settings["bedrock_format"] = os.getenv("BEDROCK_FORMAT") or ".{username}"
-        self._settings["backup_enabled"] = parse_bool(os.getenv("BACKUP_ENABLED", "false"))
+        self._settings["backup_enabled"] = parse_bool(os.getenv("BACKUP_ENABLED", "true"))
         self._settings["backup_path"] = os.getenv("BACKUP_PATH") or "./backup"
 
         self._validate()

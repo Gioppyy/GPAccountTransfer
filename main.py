@@ -1,4 +1,4 @@
-from utils import FolderScanner, UUIDUtils, Config, MySQLScanner
+from utils import FolderScanner, UUIDUtils, Config, MySQLScanner, Backupper
 from utils import logger, input_utils
 
 def main():
@@ -33,23 +33,30 @@ def main():
     uuid_utils = UUIDUtils(logger)
     old_uuid = uuid_utils.generate_offline_uuid(old_username)
     new_uuid = uuid_utils.generate_offline_uuid(new_username)
-
-    logger.debug(f"{old_uuid = } | {new_uuid = }")
-
     if (old_username == new_username):
         logger.critical("Please insert different usernames")
     logger.info("Generated successfully")
 
-    fscanner = FolderScanner(logger, cfg["server_path"], old_uuid, old_username)
-    fscanner.scan()
+    logs = []
 
-    try:
-        logger.info("Scanning database")
-        mysql_scanner = MySQLScanner(logger, cfg["db_host"], cfg["db_port"], cfg["db_username"], cfg["db_password"])
-        res = mysql_scanner.scan_all_databases(old_uuid, old_username)
-        logger.info(f"Found {len(res)} entry in the database for old name / uuid")
-    except Exception as e:
-        logger.error(f"Cant connect to MySQL server: {e}")
+    fscanner = FolderScanner(logger, cfg["server_path"], old_uuid, old_username)
+    logs.extend(fscanner.scan())
+
+    if cfg["storage_type"] != "none":
+        try:
+            logger.info("Scanning database")
+            mysql_scanner = MySQLScanner(logger, cfg["db_host"], cfg["db_port"], cfg["db_username"], cfg["db_password"])
+            logs.extend(mysql_scanner.scan_all_databases(old_uuid, old_username))
+        except Exception as e:
+            logger.error(f"Cant connect to MySQL server: {e}")
+    else: logger.info("Database scan is disabled.. skipping")
+
+    logger.info(f"Found {len(logs)} entry for old name / uuid")
+
+    if cfg["backup_enabled"]:
+        backup = Backupper(logger, cfg["backup_path"])
+        backup.log_changes(logs)
+    else: logger.info("Backup is disabled.. skipping")
 
 if __name__ == "__main__":
     main()

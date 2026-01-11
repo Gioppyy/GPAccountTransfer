@@ -1,5 +1,8 @@
 from .sqlite_scanner import SQLITEScanner
+from .backup import Backupper
 from utils import logger
+from tqdm import tqdm
+import re
 import json
 import os
 
@@ -10,6 +13,8 @@ except ImportError:
     NBT_AVAILABLE = False
     logger.warn("nbtlib not installed: NBT files will not be parsed")
 
+TEXT_EXTENSIONS = [".json", ".yml", ".yaml", ".txt"]
+
 class FolderScanner:
     def __init__(self, logger: logger, server_path: str, old_uuid: str, old_name: str):
         self._db_scanner = SQLITEScanner(logger)
@@ -19,10 +24,11 @@ class FolderScanner:
         self._logger = logger
         self._results = []
 
-    def scan(self):
-        self._logger.info(f"Searching for any entry")
+    def scan(self) -> list[str]:
+        self._logger.info("Searching for any entry")
+        self._pattern = re.compile(rf"({re.escape(self._old_uuid)}|{re.escape(self._old_name)})")
 
-        for dirpath, _, filenames in os.walk(self._server_path):
+        for dirpath, _, filenames in tqdm(os.walk(self._server_path), desc="Scanning folders"):
             for suffix in [self._old_uuid, self._old_name]:
                 for ext in [".dat", ".json"]:
                     fname = f"{suffix}{ext}"
@@ -31,15 +37,23 @@ class FolderScanner:
                         method(os.path.join(dirpath, fname))
 
             db_res = []
-            for filename in filenames:
-                if filename.endswith(".db") or filename.endswith(".sqlite"):
-                    db_res.extend(self._db_scanner.scan(os.path.join(dirpath, filename), self._old_uuid, self._old_name))
+            db_files = [f for f in filenames if f.endswith(".db") or f.endswith(".sqlite")]
+            for db_file in tqdm(db_files, desc=f"Scanning DBs in {dirpath}", leave=False):
+                db_res.extend(self._db_scanner.scan(os.path.join(dirpath, db_file), self._old_uuid, self._old_name))
             self._results.extend(db_res)
 
-        if not self._results:
-            self._logger.warn("No entry found UUID")
-        else:
-            self._logger.info(f"Found {len(self._results)} entry in folders for old name / uuid")
+            text_files = [f for f in filenames if any(f.lower().endswith(ext) for ext in TEXT_EXTENSIONS)]
+            for text_file in tqdm(text_files, desc=f"Scanning text files in {dirpath}", leave=False):
+                file_path = os.path.join(dirpath, text_file)
+                try:
+                    with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                        for _, line in enumerate(f, 1):
+                            if match := self._pattern.search(line):
+                                self._results.append(Backupper.make_edited(file_path))
+                except Exception as e:
+                    self._logger.warn(f"Cannot read file {file_path}: {e}")
+
+        return self._results
 
     def _process_dat_file(self, file_path: str) -> None:
         info = {}
@@ -70,12 +84,7 @@ class FolderScanner:
         self._append_result(file_path, "json", os.path.getsize(file_path), info)
 
     def _append_result(self, file_path, type, size, details) -> None:
-        self._results.append({
-            "file": file_path,
-            "type": type,
-            "size": size,
-            "details": details
-        })
+        self._results.append(Backupper.make_rename(file_path))
 
     def get_results(self):
         return self._results
