@@ -15,8 +15,8 @@ def main():
     try:
         old_username = input_utils.get_arg("old-name", "user1")
         new_username = input_utils.get_arg("new-name", "user2")
-        bedrock = input_utils.parse_bool(input_utils.get_arg("bedrock", "false"))
-        dry_run = input_utils.parse_bool(input_utils.get_arg("dry-run", "true"))
+        bedrock = input_utils.is_arg_present("bedrock")
+        dry_run = input_utils.is_arg_present("dry-run")
     except Exception as e:
         logger.error(str(e))
 

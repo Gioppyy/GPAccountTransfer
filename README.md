@@ -51,9 +51,10 @@ python main.py --old-name OldPlayer --new-name NewPlayer --bedrock
 # Arguments doc
 | Argument | Required | Description
 |:----------:|:-------------:|:------:|
-| `--old-name` | yes | old name|
-|`--new-name` | yes | new name |
-| `--bedrock` | no | format new name as bedrock |
+| `--old-name` | yes | Old player username|
+|`--new-name` | yes | New player username |
+| `--bedrock` | no | Enable Bedrock username formatting |
+| `--dry-run` | no | Enable dry-run mode (no changes are written) |
 
 ---
 
