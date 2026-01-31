@@ -1,0 +1,2 @@
+[console_scripts]
+gp-account-transfer = main:main

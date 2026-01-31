@@ -8,7 +8,7 @@ class SQLITEScanner():
     def __init__(self, logger: logger):
         self._logger = logger
 
-    def scan_and_update(self, file_path: str, old_uuid: str, new_uuid: str, old_name: str, new_name: str, dry_run: bool = True) -> int:
+    def scan_and_update(self, file_path: str, old_uuid: str, new_uuid: str, old_name: str, new_name: str, dry_run: bool = True) -> list[SqliteEntry]:
         results = []
         with sqlite3.connect(file_path) as conn:
             tables = self._get_tables(conn)
